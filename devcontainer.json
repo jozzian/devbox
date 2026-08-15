@@ -1,0 +1,56 @@
+{
+  "name": "devbox: ${localWorkspaceFolderBasename}",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceFolder": "/workspaces/app",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/app,type=bind,consistency=cached",
+  "features": {
+    "./features/claude-code": {},
+    "./features/credentials": {},
+    "./features/firewall": {}
+  },
+  "initializeCommand": "sh -c 'set -eu; CLAUDE_JSON=\"$HOME/.devbox/claude-json/${localWorkspaceFolderBasename}.json\"; CREDS_JSON=\"$HOME/.devbox/credentials/${localWorkspaceFolderBasename}.json\"; if [ -e \"$CLAUDE_JSON\" ] && [ ! -f \"$CLAUDE_JSON\" ]; then echo \"devbox: expected host bind source $CLAUDE_JSON to be a file\" >&2; exit 1; fi; mkdir -p \"$(dirname \"$CLAUDE_JSON\")\"; [ -e \"$CLAUDE_JSON\" ] || echo '\\''{}'\\'' > \"$CLAUDE_JSON\"; if [ -e \"$CREDS_JSON\" ] && [ ! -f \"$CREDS_JSON\" ]; then echo \"devbox: expected host bind source $CREDS_JSON to be a file\" >&2; exit 1; fi; mkdir -p \"$(dirname \"$CREDS_JSON\")\"; [ -e \"$CREDS_JSON\" ] || echo '\\''{\"credentials\":[]}'\\'' > \"$CREDS_JSON\"'",
+  "mounts": [
+    "source=devbox-claude-home-${localWorkspaceFolderBasename},target=/home/node/.claude,type=volume",
+    "source=${localEnv:HOME}/.devbox/claude-json/${localWorkspaceFolderBasename}.json,target=/home/node/.claude.json,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.devbox/credentials/${localWorkspaceFolderBasename}.json,target=/etc/devbox/credentials.json,type=bind,readonly"
+  ],
+  "postCreateCommand": "sudo /usr/local/bin/volume-init.sh && echo 'Dev container ready'",
+  "postStartCommand": "sudo /usr/local/bin/volume-init.sh && sudo /usr/local/bin/init-firewall.sh && sudo /usr/local/bin/init-credentials.sh",
+  "remoteEnv": {
+    "ANTHROPIC_API_KEY": "",
+    "AWS_SECRET_ACCESS_KEY": "",
+    "AWS_SESSION_TOKEN": "",
+    "AZURE_CLIENT_SECRET": "",
+    "DATABASE_URL": "",
+    "DOCKER_AUTH_CONFIG": "",
+    "GH_TOKEN": "",
+    "GITHUB_TOKEN": "",
+    "GITLAB_TOKEN": "",
+    "GOOGLE_APPLICATION_CREDENTIALS": "",
+    "HF_TOKEN": "",
+    "HTTPS_PROXY": "http://127.0.0.1:8080",
+    "HTTP_PROXY": "http://127.0.0.1:8080",
+    "KUBECONFIG": "",
+    "NODE_AUTH_TOKEN": "",
+    "NODE_EXTRA_CA_CERTS": "/usr/local/share/ca-certificates/devbox-proxy.crt",
+    "NO_PROXY": "localhost,127.0.0.1",
+    "NPM_TOKEN": "",
+    "OPENAI_API_KEY": "",
+    "PYPI_TOKEN": ""
+  },
+  "remoteUser": "node",
+  "runArgs": [
+    "--cap-drop=ALL",
+    "--cap-add=CHOWN",
+    "--cap-add=SETGID",
+    "--add-host=metadata.google.internal:0.0.0.0",
+    "--add-host=metadata.azure.internal:0.0.0.0",
+    "--cap-add=NET_ADMIN",
+    "--cap-add=NET_RAW",
+    "--cap-add=SETUID",
+    "--tmpfs=/root/.mitmproxy:rw,noexec,nosuid"
+  ],
+  "updateRemoteUserUID": true
+}

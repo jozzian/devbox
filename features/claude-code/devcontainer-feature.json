@@ -1,0 +1,9 @@
+{
+    "id": "claude-code",
+    "version": "0.1.0",
+    "name": "Claude Code",
+    "description": "Installs Claude Code CLI",
+    "documentationURL": "https://docs.anthropic.com/en/docs/claude-code",
+    "options": {},
+    "installsAfter": ["ghcr.io/devcontainers/features/common-utils"]
+}

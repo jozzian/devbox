@@ -1,0 +1,8 @@
+{
+    "id": "firewall",
+    "version": "0.3.0",
+    "name": "Firewall",
+    "description": "Network isolation with domain allowlisting via iptables",
+    "options": {},
+    "installsAfter": ["ghcr.io/devcontainers/features/common-utils"]
+}

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-16
+
+### Added
+
+- README "Security notes" section: allowlisted hosts can still be
+  misused for exfiltration, injected credentials carry their full
+  granted scope (not just what's needed), and agent memory (e.g.
+  Claude Code's) persists per project in a Docker volume and can be
+  poisoned by prompt injection from untrusted content read during a
+  session.
+
 ## [0.1.1] - 2026-08-16
 
 ### Fixed
@@ -40,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Platform notes rewritten: Linux (Docker Engine) confirmed supported
   end-to-end on Ubuntu 24.04; OrbStack mentions scoped to macOS only.
 
-[Unreleased]: https://github.com/jozzian/devbox/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/jozzian/devbox/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/jozzian/devbox/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/jozzian/devbox/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/jozzian/devbox/releases/tag/v0.1.0

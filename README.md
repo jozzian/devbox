@@ -16,6 +16,35 @@ access.
 - Isolates each tool's own config/session home in a per-project named
   Docker volume, not a bind mount.
 
+## Security notes
+
+This sandbox reduces the agent's blast radius; it doesn't eliminate
+it. Worth knowing before you rely on it:
+
+- **Allowlisted hosts can still be abused.** The firewall
+  (`features/firewall/network-policy.json`) blocks arbitrary
+  destinations, not arbitrary *uses* of permitted ones. GitHub, the
+  npm/PyPI/crates registries, and the Anthropic/OpenAI APIs are all
+  allowlisted and all accept user-supplied content — a compromised or
+  adversarial agent could still leak data via a public commit/gist, a
+  published package, or a crafted API request. Trim the allowlist to
+  what a given project actually needs.
+- **Injected credentials carry their full granted scope.** The
+  credential proxy (`features/credentials`) keeps the raw key out of
+  the agent process, but a request using an injected credential
+  succeeds with whatever permissions that credential has. Use scoped,
+  least-privilege tokens, not broad personal ones. Injection events
+  (header + host, never the value) are logged inside the container to
+  `/var/log/devbox/credential-injections.log`.
+- **Agent memory persists per project.** Tools that keep their own
+  long-term memory/notes (e.g. Claude Code) store it under
+  `/home/node/.claude`, mounted as a named Docker volume keyed to the
+  project folder's basename — isolated between projects, but not
+  wiped between sessions on the same one. Content an agent is tricked
+  into writing there (via a prompt injection from an untrusted page,
+  file, or tool result) would be reloaded as trusted context in a
+  later session. Worth auditing occasionally if this matters to you.
+
 ## Requirements
 
 - Docker

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-16
+
+### Fixed
+
+- Bootstrap no longer copies the template's `.git` directory into a
+  project's `.devcontainer/`. Previously, `cp -r "$template_dir"
+  .devcontainer` carried the template repo's full history and `origin`
+  remote into every bootstrapped project, so a git command run from
+  inside a project could silently operate on the template's own
+  remote instead of the project's.
+
 ## [0.1.0] - 2026-08-16
 
 ### Added
@@ -29,5 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Platform notes rewritten: Linux (Docker Engine) confirmed supported
   end-to-end on Ubuntu 24.04; OrbStack mentions scoped to macOS only.
 
-[Unreleased]: https://github.com/jozzian/devbox/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/jozzian/devbox/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/jozzian/devbox/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/jozzian/devbox/releases/tag/v0.1.0

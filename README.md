@@ -67,6 +67,11 @@ don't propagate to already-bootstrapped projects.
 `devbox <project-dir>` also runs these checks automatically before
 building, and stops with the same fix commands if anything's missing.
 
+Bootstrapping only copies the template's files, not its `.git` — a
+project's `.devcontainer/` is never a clone of this repo, so git
+commands run inside a bootstrapped project can't accidentally target
+this template's remote.
+
 ## Platform notes
 
 Tested on macOS (Docker Desktop, OrbStack) and Linux (Docker Engine,

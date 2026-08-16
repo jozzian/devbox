@@ -70,6 +70,12 @@ devbox() {
     fi
     echo "devbox: no .devcontainer/ found, bootstrapping from $template_dir"
     cp -r "$template_dir" .devcontainer
+    # Never carry the template's own .git into a project: it would give
+    # every bootstrapped project a live clone of the template repo (full
+    # history, origin remote) nested inside .devcontainer/, and a stray
+    # git command run from there would target the template's remote
+    # instead of the project's.
+    rm -rf .devcontainer/.git
   fi
   if [[ -f .devcontainer/VERSION && -f "$template_dir/VERSION" ]]; then
     local project_version template_version

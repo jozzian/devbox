@@ -45,10 +45,154 @@ _devbox_doctor() {
   [[ "$ok" == "1" ]]
 }
 
+_devbox_firewall_custom_header() {
+  cat <<'EOF'
+# 99-custom.txt -- your own additions to the firewall allowlist.
+# One domain per line. '#' starts a comment; blank lines are ignored.
+# `devbox firewall list` combines this with every other *.txt file in
+# firewall.d/ (sorted by filename) and dedupes -- a domain already
+# covered by a preset doesn't need to be repeated here.
+#
+# Add domains with `devbox firewall add <domain>`, or edit this file
+# directly and run `devbox firewall list` to confirm, then restart the
+# container (or `devbox firewall add <domain>` again, which reloads a
+# running container's firewall for you).
+EOF
+}
+
+_devbox_firewall_container_id() {
+  docker ps -q --filter "label=devcontainer.local_folder=$1"
+}
+
+_devbox_firewall_reload() {
+  local proj="$1" cid
+  cid="$(_devbox_firewall_container_id "$proj")"
+  if [[ -n "$cid" ]]; then
+    echo "devbox: reloading firewall in running container $cid"
+    docker exec "$cid" sudo /usr/local/bin/init-firewall.sh
+  else
+    echo "devbox: no running container for $proj -- change takes effect next start"
+  fi
+}
+
+_devbox_firewall_list() {
+  local proj="$1" dir f base domain clean seen total=0 printed_any
+  dir="$proj/.devcontainer/firewall.d"
+  if [[ ! -d "$dir" ]]; then
+    echo "devbox: no $dir -- this project hasn't bootstrapped the firewall.d allowlist yet" >&2
+    return 1
+  fi
+  seen=""
+  for f in "$dir"/*.txt; do
+    [[ -f "$f" ]] || continue
+    base="$(basename "$f")"
+    printed_any=0
+    while IFS= read -r domain; do
+      clean="${domain%%#*}"
+      clean="$(echo "$clean" | xargs || true)"
+      [[ -n "$clean" ]] || continue
+      if printf '%s\n' "$seen" | grep -qxF "$clean"; then
+        continue
+      fi
+      seen="$seen
+$clean"
+      if [[ "$printed_any" == "0" ]]; then
+        echo "$base:"
+        printed_any=1
+      fi
+      echo "  $clean"
+      total=$((total + 1))
+    done < "$f"
+  done
+  echo "---"
+  echo "$total unique domain(s) allowlisted from $dir"
+}
+
+_devbox_firewall_test() {
+  local proj="$1" domain="$2" cid
+  cid="$(_devbox_firewall_container_id "$proj")"
+  if [[ -z "$cid" ]]; then
+    echo "devbox: no running container for $proj -- start one with 'devbox $proj' first" >&2
+    return 1
+  fi
+  if docker exec "$cid" curl -sf --max-time 5 "https://$domain" >/dev/null 2>&1; then
+    echo "  [PASS] $domain reachable"
+  else
+    echo "  [WARN] $domain not reachable -- check rules"
+  fi
+}
+
+_devbox_firewall() {
+  local sub="$1"
+  shift || true
+  case "$sub" in
+    add)
+      local domain="$1" proj="${2:-.}" custom
+      if [[ -z "$domain" ]]; then
+        echo "usage: devbox firewall add <domain> [project-dir]" >&2
+        return 1
+      fi
+      proj="$(cd "$proj" 2>/dev/null && pwd)" || { echo "devbox: no such directory: ${2:-.}" >&2; return 1; }
+      custom="$proj/.devcontainer/firewall.d/99-custom.txt"
+      mkdir -p "$(dirname "$custom")"
+      [[ -f "$custom" ]] || _devbox_firewall_custom_header > "$custom"
+      if grep -qxF "$domain" "$custom" 2>/dev/null; then
+        echo "devbox: $domain already in $custom"
+      else
+        echo "$domain" >> "$custom"
+        echo "devbox: added $domain to $custom"
+      fi
+      _devbox_firewall_reload "$proj"
+      ;;
+    enable)
+      local preset="$1" proj="${2:-.}" src
+      if [[ -z "$preset" ]]; then
+        echo "usage: devbox firewall enable <preset> [project-dir]" >&2
+        return 1
+      fi
+      proj="$(cd "$proj" 2>/dev/null && pwd)" || { echo "devbox: no such directory: ${2:-.}" >&2; return 1; }
+      src="$HOME/.devbox-template/features/firewall/presets/$preset.txt"
+      if [[ ! -f "$src" ]]; then
+        echo "devbox: unknown preset '$preset' (no $src)" >&2
+        echo "        available presets:" >&2
+        ls "$HOME/.devbox-template/features/firewall/presets" 2>/dev/null | sed 's/\.txt$//' | sed 's/^/          /' >&2
+        return 1
+      fi
+      mkdir -p "$proj/.devcontainer/firewall.d"
+      cp "$src" "$proj/.devcontainer/firewall.d/$preset.txt"
+      echo "devbox: enabled preset '$preset' in $proj/.devcontainer/firewall.d/$preset.txt"
+      _devbox_firewall_reload "$proj"
+      ;;
+    list)
+      local proj="${1:-.}"
+      proj="$(cd "$proj" 2>/dev/null && pwd)" || { echo "devbox: no such directory: ${1:-.}" >&2; return 1; }
+      _devbox_firewall_list "$proj"
+      ;;
+    test)
+      local domain="$1" proj="${2:-.}"
+      if [[ -z "$domain" ]]; then
+        echo "usage: devbox firewall test <domain> [project-dir]" >&2
+        return 1
+      fi
+      proj="$(cd "$proj" 2>/dev/null && pwd)" || { echo "devbox: no such directory: ${2:-.}" >&2; return 1; }
+      _devbox_firewall_test "$proj" "$domain"
+      ;;
+    *)
+      echo "usage: devbox firewall <add|enable|list|test> ..." >&2
+      return 1
+      ;;
+  esac
+}
+
 devbox() {
   local dir="$1"
   if [[ "$dir" == "doctor" ]]; then
     _devbox_doctor 1
+    return $?
+  fi
+  if [[ "$dir" == "firewall" ]]; then
+    shift
+    _devbox_firewall "$@"
     return $?
   fi
   if [[ -z "$dir" ]]; then
@@ -81,6 +225,20 @@ devbox() {
     # git command run from there would target the template's remote
     # instead of the project's.
     rm -rf .devcontainer/.git
+    # Seed the firewall allowlist with a default preset set (base +
+    # claude-code, the primary supported tool today) and an empty,
+    # documented spot for the project's own additions. This is a copy,
+    # like the rest of bootstrapping: it doesn't track template changes,
+    # so `devbox firewall enable <preset>` re-copies from the template
+    # when a project wants a preset it didn't start with.
+    mkdir -p .devcontainer/firewall.d
+    local preset
+    for preset in base claude-code; do
+      if [[ -f ".devcontainer/features/firewall/presets/$preset.txt" ]]; then
+        cp ".devcontainer/features/firewall/presets/$preset.txt" ".devcontainer/firewall.d/$preset.txt"
+      fi
+    done
+    _devbox_firewall_custom_header > .devcontainer/firewall.d/99-custom.txt
   fi
   if [[ -f .devcontainer/VERSION && -f "$template_dir/VERSION" ]]; then
     local project_version template_version

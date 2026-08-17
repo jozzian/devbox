@@ -1,0 +1,2 @@
+# hermes — Nous Research Hermes agent endpoint.
+hermes-agent.nousresearch.com

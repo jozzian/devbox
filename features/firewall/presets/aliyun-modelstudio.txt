@@ -1,0 +1,5 @@
+# aliyun-modelstudio — Alibaba Cloud Model Studio / DashScope (Qwen and
+# other Aliyun-hosted models).
+dashscope-intl.aliyuncs.com
+ws-5gd38sq7ojerxjn7.ap-southeast-1.maas.aliyuncs.com
+token-plan.ap-southeast-1.maas.aliyuncs.com

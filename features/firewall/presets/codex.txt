@@ -1,0 +1,7 @@
+# codex — OpenAI Codex CLI. chatgpt.com is required for the built-in
+# codex_apps MCP server (ChatGPT connectors/apps); without it the
+# connection hangs until Codex's own 30s MCP startup timeout gives up
+# ("MCP client for codex_apps timed out after 30 seconds"). See README.
+api.openai.com
+auth.openai.com
+chatgpt.com

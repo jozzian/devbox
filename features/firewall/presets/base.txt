@@ -1,0 +1,28 @@
+# base — package registries and other infrastructure nearly every project
+# needs, regardless of language or tool. Bootstrapped into every new
+# project by default (see devbox.sh).
+
+# npm / yarn
+registry.npmjs.org
+registry.yarnpkg.com
+
+# PyPI
+pypi.org
+files.pythonhosted.org
+
+# crates.io
+crates.io
+static.crates.io
+index.crates.io
+
+# Node.js releases
+nodejs.org
+iojs.org
+
+# Bun
+bun.sh
+
+# Docker Hub
+registry-1.docker.io
+auth.docker.io
+production.cloudflare.docker.com

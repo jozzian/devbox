@@ -1,0 +1,9 @@
+# github — git/GitHub access over HTTPS. init-firewall.sh separately
+# fetches GitHub's full published IP ranges (api.github.com/meta) as a
+# CIDR-level fallback; these hostnames are resolved by A record and are
+# what actually gets used if that fetch ever fails.
+github.com
+api.github.com
+raw.githubusercontent.com
+objects.githubusercontent.com
+release-assets.githubusercontent.com

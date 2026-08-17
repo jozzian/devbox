@@ -1,0 +1,3 @@
+# socket — Socket Security supply-chain scanning (socket.dev).
+api.socket.dev
+socket.dev

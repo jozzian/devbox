@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-17
+
+### Added
+
+- File-based firewall allowlist: `init-firewall.sh` now reads every
+  `.txt` file in a project's `.devcontainer/firewall.d/` (sorted,
+  deduped) instead of a single hardcoded `network-policy.json` group
+  list. Lets a project add or remove domains itself without patching
+  devbox.
+- `features/firewall/presets/` — a shared catalog of known domain
+  needs (`base`, `github`, `claude-code`, `codex`, `socket`, `hermes`,
+  `aliyun-modelstudio`), seeded from the previous hardcoded groups and
+  split by tool/purpose.
+- Bootstrap now copies `base` and `claude-code` presets into a new
+  project's `.devcontainer/firewall.d/`, plus an empty, commented
+  `99-custom.txt` for project-specific additions.
+- `devbox firewall add <domain> [project-dir]`,
+  `devbox firewall enable <preset> [project-dir]`,
+  `devbox firewall list [project-dir]`, and
+  `devbox firewall test <domain> [project-dir]` — manage a project's
+  allowlist from outside the container, reloading a running
+  container's firewall live via `docker exec ... init-firewall.sh`
+  (no rebuild required).
+
+### Changed
+
+- `network-policy.json` now holds only `deny` and `allow_host_gateway`
+  — the domain `groups` it used to carry moved to
+  `features/firewall/presets/`.
+
+### Removed
+
+- The single-file `.devbox/allowed-domains` mechanism added in 0.1.5.
+  Superseded by `.devcontainer/firewall.d/*.txt` (multiple files,
+  presets, and the `devbox firewall` subcommands) after one day in the
+  template with no other adopters to migrate.
+
 ## [0.1.5] - 2026-08-17
 
 ### Added
@@ -93,7 +130,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Platform notes rewritten: Linux (Docker Engine) confirmed supported
   end-to-end on Ubuntu 24.04; OrbStack mentions scoped to macOS only.
 
-[Unreleased]: https://github.com/jozzian/devbox/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/jozzian/devbox/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/jozzian/devbox/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/jozzian/devbox/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/jozzian/devbox/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/jozzian/devbox/compare/v0.1.2...v0.1.3

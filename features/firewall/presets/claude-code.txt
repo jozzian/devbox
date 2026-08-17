@@ -1,0 +1,12 @@
+# claude-code — Anthropic API/console plus Claude Code's own telemetry
+# (Sentry error reporting, Statsig feature flags). Bootstrapped into
+# every new project by default alongside base.txt, since Claude Code is
+# the primary supported tool today.
+api.anthropic.com
+claude.ai
+console.anthropic.com
+statsig.anthropic.com
+sentry.io
+o4507603601408000.ingest.us.sentry.io
+api.statsig.com
+featureassets.org

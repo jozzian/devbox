@@ -16,10 +16,13 @@ echo "Initializing firewall..."
 POLICY_FILE="/usr/local/lib/devbox/network-policy.json"
 GATEWAY_PORTS_DIR="/usr/local/lib/devbox/gateway-ports.d"
 READY_SENTINEL="/run/devbox/firewall-ready"
-# Project-local, user-editable extra domains — lets a project add a domain
-# for a tool devbox doesn't know about yet without patching the vendored
-# feature files. One domain per line; '#' comments and blank lines ignored.
-EXTRA_DOMAINS_FILE="/workspaces/app/.devbox/allowed-domains"
+# Project-local, user-editable domain allowlist. Every *.txt file in this
+# directory is combined (sorted by filename, so ordering is predictable)
+# and deduped. Bootstrapping seeds it with a default set of presets
+# (see devbox.sh); `devbox firewall add`/`enable` add more without
+# touching the vendored feature files, and `devbox firewall list` reads
+# the same directory to show what's allowed and why.
+FIREWALL_D_DIR="/workspaces/app/.devcontainer/firewall.d"
 
 # ── 0. Fail closed ──────────────────────────────────────────────────
 # If we exit before reaching the end — a failed lookup, an iptables error,
@@ -80,16 +83,10 @@ done < <(grep -E '^[[:space:]]*nameserver[[:space:]]+' /etc/resolv.conf 2>/dev/n
 ipset destroy allowed-domains-staging 2>/dev/null || true
 ipset create allowed-domains-staging hash:net
 
-# Allowed domains from the network policy
-while IFS= read -r domain; do
-    ips=$(dig +short A "$domain" 2>/dev/null | grep -E '^[0-9]+\.' || true)
-    for ip in $ips; do
-        ipset add allowed-domains-staging "$ip" -exist 2>/dev/null || true
-    done
-done < <(jq -r '.groups | to_entries[].value[]' "$POLICY_FILE")
-
-# Extra domains a project has opted into via EXTRA_DOMAINS_FILE (see above).
-if [ -f "$EXTRA_DOMAINS_FILE" ]; then
+# Allowed domains: every *.txt file in FIREWALL_D_DIR, combined and
+# deduped. One domain per line; '#' comments (leading or trailing) and
+# blank lines ignored.
+if [ -d "$FIREWALL_D_DIR" ]; then
     while IFS= read -r domain; do
         domain="${domain%%#*}"                    # strip trailing comments
         domain="$(echo "$domain" | xargs || true)" # trim whitespace
@@ -98,7 +95,9 @@ if [ -f "$EXTRA_DOMAINS_FILE" ]; then
         for ip in $ips; do
             ipset add allowed-domains-staging "$ip" -exist 2>/dev/null || true
         done
-    done < "$EXTRA_DOMAINS_FILE"
+    done < <(cat "$FIREWALL_D_DIR"/*.txt 2>/dev/null | sort -u)
+else
+    echo "  [WARN] $FIREWALL_D_DIR not found — no project domains allowlisted beyond GitHub/DNS" >&2
 fi
 
 # GitHub IP ranges (supports HTTPS + git over SSH to GitHub)

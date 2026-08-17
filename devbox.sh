@@ -61,6 +61,11 @@ devbox() {
     echo "devbox: no such directory: $1" >&2
     return 1
   fi
+  # Docker volume names must match [a-zA-Z0-9][a-zA-Z0-9_.-]*, but project
+  # folder names can contain spaces or other characters Docker rejects.
+  # devcontainer.json can't sanitize ${localWorkspaceFolderBasename} itself,
+  # so we do it here and pass it through as an env var it can reference.
+  export DEVBOX_PROJECT_NAME="$(basename "$dir" | tr -c 'A-Za-z0-9_.-' '-')"
   builtin cd "$dir" || return 1
   local template_dir="$HOME/.devbox-template"
   if [[ ! -f .devcontainer/devcontainer.json && ! -f .devcontainer.json ]]; then

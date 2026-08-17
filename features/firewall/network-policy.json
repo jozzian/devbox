@@ -55,7 +55,8 @@
     ],
     "openai": [
       "api.openai.com",
-      "auth.openai.com"
+      "auth.openai.com",
+      "chatgpt.com"
     ]
   },
   "allow_host_gateway": false,

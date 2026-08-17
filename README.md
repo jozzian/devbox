@@ -36,14 +36,54 @@ it. Worth knowing before you rely on it:
   least-privilege tokens, not broad personal ones. Injection events
   (header + host, never the value) are logged inside the container to
   `/var/log/devbox/credential-injections.log`.
-- **Agent memory persists per project.** Tools that keep their own
-  long-term memory/notes (e.g. Claude Code) store it under
-  `/home/node/.claude`, mounted as a named Docker volume keyed to the
-  project folder's basename — isolated between projects, but not
-  wiped between sessions on the same one. Content an agent is tricked
-  into writing there (via a prompt injection from an untrusted page,
-  file, or tool result) would be reloaded as trusted context in a
-  later session. Worth auditing occasionally if this matters to you.
+- **Agent memory — and login — persists per project, not globally.**
+  Tools that keep their own long-term memory/notes and credentials
+  (e.g. Claude Code, which stores its OAuth token in
+  `~/.claude/.credentials.json`) get `/home/node/.claude` mounted as a
+  named Docker volume keyed to the project folder's basename. That
+  volume is isolated between projects but not wiped between sessions
+  on the same one. Two consequences: content an agent is tricked into
+  writing there (via a prompt injection from an untrusted page, file,
+  or tool result) would be reloaded as trusted context in a later
+  session — worth auditing occasionally if this matters to you — and
+  you'll need to `claude login` again the first time you `devbox` into
+  each *new* project folder, even if you've already logged in from
+  another one, because each folder gets its own empty volume. Re-running
+  `devbox` on a folder you've already logged in from reuses that
+  folder's volume, so the session carries over there.
+
+## Codex CLI
+
+OpenAI's [Codex CLI](https://github.com/openai/codex) works inside devbox.
+A couple of things to know:
+
+- **The `codex_apps` MCP server needs `chatgpt.com` allowlisted.** Codex's
+  built-in `codex_apps` MCP server (ChatGPT connectors/apps) calls out to
+  `chatgpt.com/backend-api/`; without it on the firewall allowlist the
+  connection hangs until Codex's own 30s MCP startup timeout gives up,
+  printing `MCP client for codex_apps timed out after 30 seconds`. This
+  is allowlisted by default (`features/firewall/network-policy.json`,
+  `openai` group). If you still see the timeout — e.g. because your
+  project's bootstrapped `.devcontainer/` predates this — add
+  `chatgpt.com` to your allowlist (see below) or upgrade your project's
+  `.devcontainer/` to a newer template version.
+- **The bubblewrap warning on startup is expected.** Codex normally
+  sandboxes the commands *it* runs using Linux user namespaces
+  (bubblewrap). Building those namespaces needs capabilities devbox's
+  container deliberately drops, so Codex can't do it and prints a
+  startup warning and falls back to its bundled bubblewrap helper. In
+  practice this means Codex's own per-command sandboxing is weaker than
+  it would be on a bare host — you're relying on devbox's outer
+  container sandbox (dropped capabilities, firewall) instead. This has
+  been fine in testing, but if you notice odd behavior around Codex's
+  file edits or command execution, that's the known limitation to
+  suspect first.
+
+**Adding domains for tools devbox doesn't know about yet:** rather than
+editing the vendored `network-policy.json`, add one domain per line to
+`.devbox/allowed-domains` in your project root (created if missing,
+`#` comments allowed) and restart the container (or re-run
+`sudo /usr/local/bin/init-firewall.sh` inside it) to pick it up.
 
 ## Requirements
 

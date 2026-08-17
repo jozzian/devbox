@@ -16,6 +16,10 @@ echo "Initializing firewall..."
 POLICY_FILE="/usr/local/lib/devbox/network-policy.json"
 GATEWAY_PORTS_DIR="/usr/local/lib/devbox/gateway-ports.d"
 READY_SENTINEL="/run/devbox/firewall-ready"
+# Project-local, user-editable extra domains — lets a project add a domain
+# for a tool devbox doesn't know about yet without patching the vendored
+# feature files. One domain per line; '#' comments and blank lines ignored.
+EXTRA_DOMAINS_FILE="/workspaces/app/.devbox/allowed-domains"
 
 # ── 0. Fail closed ──────────────────────────────────────────────────
 # If we exit before reaching the end — a failed lookup, an iptables error,
@@ -83,6 +87,19 @@ while IFS= read -r domain; do
         ipset add allowed-domains-staging "$ip" -exist 2>/dev/null || true
     done
 done < <(jq -r '.groups | to_entries[].value[]' "$POLICY_FILE")
+
+# Extra domains a project has opted into via EXTRA_DOMAINS_FILE (see above).
+if [ -f "$EXTRA_DOMAINS_FILE" ]; then
+    while IFS= read -r domain; do
+        domain="${domain%%#*}"                    # strip trailing comments
+        domain="$(echo "$domain" | xargs || true)" # trim whitespace
+        [ -n "$domain" ] || continue
+        ips=$(dig +short A "$domain" 2>/dev/null | grep -E '^[0-9]+\.' || true)
+        for ip in $ips; do
+            ipset add allowed-domains-staging "$ip" -exist 2>/dev/null || true
+        done
+    done < "$EXTRA_DOMAINS_FILE"
+fi
 
 # GitHub IP ranges (supports HTTPS + git over SSH to GitHub)
 GITHUB_META=$(curl -sf --max-time 10 https://api.github.com/meta 2>/dev/null || true)

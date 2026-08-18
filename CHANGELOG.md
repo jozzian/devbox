@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-18
+
+### Fixed
+
+- **`claude login` (and every other request) hung forever in projects
+  upgraded to 0.2.0.** Seeding `.devcontainer/firewall.d/` was part of
+  bootstrapping, and bootstrapping only runs when a project has no
+  `.devcontainer/` at all — so a project that already had one picked up
+  the new `init-firewall.sh` without ever getting a `firewall.d/` to
+  read. The script treated the missing directory as "zero domains",
+  leaving an allowlist of GitHub and DNS only. `devbox <project-dir>`
+  now seeds `firewall.d/` whenever it is absent, independently of
+  bootstrapping. An existing `firewall.d/` is never touched, so a
+  trimmed allowlist stays trimmed.
+- `init-firewall.sh` now exits non-zero when `firewall.d/` is missing
+  instead of warning to stderr and carrying on. It previously went on
+  to clear the fail-closed trap and write the readiness sentinel, so
+  devbox reported a healthy sandbox that could not reach anything. A
+  present-but-empty `firewall.d/` still only warns — trimming to
+  nothing is a legitimate choice.
+- Blocked egress is now `REJECT`ed rather than left to the `DROP`
+  policy, so it fails immediately with "connection refused" instead of
+  black-holing until the client times out. This is what made the bug
+  above present as a frozen terminal with no output rather than an
+  error; any future missing domain is now self-evident. The `DROP`
+  policy remains as the backstop and as what `fail_closed` restores.
+  IPv6 gets the same treatment so happy-eyeballs clients fall back to
+  IPv4 at once instead of stalling.
+- `DEVBOX_PROJECT_NAME` no longer picks up a trailing `-`. `tr -c`
+  counted the newline from `basename` as out-of-set and rewrote it,
+  so 0.2.0 renamed every project's `/home/node/.claude` volume and
+  orphaned its stored login — which is why upgrading prompted a fresh
+  `claude login` in the first place. The corrected name matches what
+  0.1.x used, so upgrading from 0.1.x reattaches the original volume;
+  anyone who ran 0.2.0 will need to log in once more.
+- Bootstrapping no longer copies the template's own `.devcontainer/`
+  into a new project, which nested a second, older config one level
+  down.
+
+### Added
+
+- `claude.com` and `platform.claude.com` to the `claude-code` preset.
+  `claude login`'s OAuth authorize and callback hosts were only ever
+  reachable because they share an address with `claude.ai`.
+
 ## [0.2.0] - 2026-08-17
 
 ### Added

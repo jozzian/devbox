@@ -65,6 +65,11 @@ if [ -d /proc/sys/net/ipv6 ]; then
         echo "       Refusing to start with IPv6 egress unrestricted." >&2
         exit 1
     fi
+    # Same reasoning as the IPv4 REJECT in step 3: a client doing happy
+    # eyeballs should fall back to IPv4 at once instead of stalling on a
+    # black hole. Failure speed only — egress is closed either way — and a
+    # no-op on the sysctl fallback path, where ip6tables isn't there.
+    ip6tables -A OUTPUT -j REJECT --reject-with icmp6-port-unreachable 2>/dev/null || true
 fi
 
 # ── 2. Resolve everything while egress still works ──────────────────
@@ -86,18 +91,42 @@ ipset create allowed-domains-staging hash:net
 # Allowed domains: every *.txt file in FIREWALL_D_DIR, combined and
 # deduped. One domain per line; '#' comments (leading or trailing) and
 # blank lines ignored.
-if [ -d "$FIREWALL_D_DIR" ]; then
-    while IFS= read -r domain; do
-        domain="${domain%%#*}"                    # strip trailing comments
-        domain="$(echo "$domain" | xargs || true)" # trim whitespace
-        [ -n "$domain" ] || continue
-        ips=$(dig +short A "$domain" 2>/dev/null | grep -E '^[0-9]+\.' || true)
-        for ip in $ips; do
-            ipset add allowed-domains-staging "$ip" -exist 2>/dev/null || true
-        done
-    done < <(cat "$FIREWALL_D_DIR"/*.txt 2>/dev/null | sort -u)
+#
+# A missing directory is fatal, not a warning. Treating it as "zero
+# domains" is what let an upgraded project come up sandboxed to GitHub and
+# DNS alone: the script warned to stderr, then went on to clear the
+# fail-closed trap and write the readiness sentinel, so devbox reported a
+# healthy sandbox while every request to anywhere else hung on a dropped
+# packet. If the directory is genuinely absent the project needs seeding
+# from the host, and refusing to start is far kinder than half-starting.
+if [ ! -d "$FIREWALL_D_DIR" ]; then
+    echo "ERROR: $FIREWALL_D_DIR not found." >&2
+    echo "       The allowlist is built entirely from that directory; without it" >&2
+    echo "       nothing outside GitHub and DNS would be reachable." >&2
+    echo "       Run 'devbox <project-dir>' on the host to seed it with the" >&2
+    echo "       default presets, then start the container again." >&2
+    exit 1
+fi
+
+domain_count=0
+while IFS= read -r domain; do
+    domain="${domain%%#*}"                    # strip trailing comments
+    domain="$(echo "$domain" | xargs || true)" # trim whitespace
+    [ -n "$domain" ] || continue
+    domain_count=$((domain_count + 1))
+    ips=$(dig +short A "$domain" 2>/dev/null | grep -E '^[0-9]+\.' || true)
+    for ip in $ips; do
+        ipset add allowed-domains-staging "$ip" -exist 2>/dev/null || true
+    done
+done < <(cat "$FIREWALL_D_DIR"/*.txt 2>/dev/null | sort -u)
+
+# Present but empty is the project's own call -- the README encourages
+# trimming the allowlist -- so warn rather than refuse. Say it plainly
+# though: from inside the container it looks identical to a broken setup.
+if [ "$domain_count" -eq 0 ]; then
+    echo "  [WARN] no domains in $FIREWALL_D_DIR/*.txt — allowing only GitHub and DNS" >&2
 else
-    echo "  [WARN] $FIREWALL_D_DIR not found — no project domains allowlisted beyond GitHub/DNS" >&2
+    echo "  allowlisting $domain_count domain(s) from $FIREWALL_D_DIR"
 fi
 
 # GitHub IP ranges (supports HTTPS + git over SSH to GitHub)
@@ -204,7 +233,20 @@ ipset swap allowed-domains-staging allowed-domains
 ipset destroy allowed-domains-staging
 iptables -A OUTPUT -m set --match-set allowed-domains dst -j ACCEPT
 
-# Default: drop everything else. IPv6 is handled in step 1 above.
+# Reject the remainder explicitly rather than letting it fall through to the
+# DROP policy. A dropped SYN is a black hole: the client sits in retransmit
+# until its own timeout, so a tool that sets none — claude login's token
+# exchange, for one — hangs indefinitely with nothing printed. Rejecting
+# turns the same block into an immediate "connection refused", which is the
+# difference between a frozen terminal and a five-second diagnosis.
+# Best-effort: if the REJECT target is unavailable the DROP policy below
+# still closes egress, we just lose the fast failure.
+iptables -A OUTPUT -p tcp -j REJECT --reject-with tcp-reset 2>/dev/null \
+    || echo "  [WARN] REJECT unavailable — blocked traffic will hang until the client times out" >&2
+iptables -A OUTPUT -j REJECT --reject-with icmp-port-unreachable 2>/dev/null || true
+
+# Default: drop everything else, and the backstop fail_closed restores.
+# IPv6 is handled in step 1 above.
 iptables -P OUTPUT DROP
 
 # ── 4. Verify ───────────────────────────────────────────────────────

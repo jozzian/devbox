@@ -6,6 +6,14 @@ api.anthropic.com
 claude.ai
 console.anthropic.com
 statsig.anthropic.com
+
+# `claude login`'s OAuth flow: the authorize URL is on claude.com and the
+# code it hands back is exchanged against the platform.claude.com callback
+# host. Both resolve to the same address as claude.ai today, so the
+# allowlist covered them by accident — listed explicitly so a DNS change
+# on Anthropic's side doesn't silently break logging in.
+claude.com
+platform.claude.com
 sentry.io
 o4507603601408000.ingest.us.sentry.io
 api.statsig.com

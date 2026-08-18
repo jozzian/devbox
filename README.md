@@ -96,12 +96,26 @@ else gets out — same fail-closed, self-verified-on-every-start
 behavior as before, just a configurable input instead of one hardcoded
 list.
 
-Bootstrapping a new project copies in a default set —
-`base.txt` (package registries) and `claude-code.txt` (Anthropic API,
-Claude Code telemetry) — plus an empty, commented `99-custom.txt` for
-your own additions. Like the rest of bootstrapping, this is a one-time
-copy: editing `features/firewall/presets/` here doesn't retroactively
-change an already-bootstrapped project.
+Blocked traffic is rejected, not dropped, so a request to a domain you
+haven't allowlisted fails straight away with "connection refused"
+rather than hanging until the client gives up. If a tool inside the
+container stalls with no output, the firewall is not why — check
+`devbox firewall list` and `devbox firewall test <domain>` anyway, but
+expect an error rather than a freeze.
+
+`devbox <project-dir>` copies in a default set — `base.txt` (package
+registries) and `claude-code.txt` (Anthropic API, Claude Code
+telemetry) — plus an empty, commented `99-custom.txt` for your own
+additions. Unlike the rest of bootstrapping this isn't tied to first
+run: any project without a `firewall.d/` gets one, so projects
+bootstrapped before it existed are repaired on their next `devbox`.
+A `firewall.d/` that already exists is left alone — trim it freely,
+nothing is put back underneath you.
+
+The contents are still a one-time copy: editing
+`features/firewall/presets/` here doesn't retroactively change a
+project that already has the preset. Use `devbox firewall enable
+<preset>` to re-copy one.
 
 ```bash
 devbox firewall add <domain> [project-dir]      # append to 99-custom.txt, reload if running
@@ -120,7 +134,7 @@ rebuild needed.
 | Preset | Domains | Default? |
 | --- | --- | --- |
 | `base` | `registry.npmjs.org`, `registry.yarnpkg.com`, `pypi.org`, `files.pythonhosted.org`, `crates.io`, `static.crates.io`, `index.crates.io`, `nodejs.org`, `iojs.org`, `bun.sh`, `registry-1.docker.io`, `auth.docker.io`, `production.cloudflare.docker.com` | **Yes** — bootstrapped into every new project |
-| `claude-code` | `api.anthropic.com`, `claude.ai`, `console.anthropic.com`, `statsig.anthropic.com`, `sentry.io`, `o4507603601408000.ingest.us.sentry.io`, `api.statsig.com`, `featureassets.org` | **Yes** — bootstrapped into every new project |
+| `claude-code` | `api.anthropic.com`, `claude.ai`, `claude.com`, `platform.claude.com`, `console.anthropic.com`, `statsig.anthropic.com`, `sentry.io`, `o4507603601408000.ingest.us.sentry.io`, `api.statsig.com`, `featureassets.org` | **Yes** — bootstrapped into every new project |
 | `github` | `github.com`, `api.github.com`, `raw.githubusercontent.com`, `objects.githubusercontent.com`, `release-assets.githubusercontent.com` | No — `init-firewall.sh` separately fetches GitHub's full IP ranges regardless, so this preset only matters as an A-record fallback if that fetch fails |
 | `codex` | `api.openai.com`, `auth.openai.com`, `chatgpt.com` | No — `devbox firewall enable codex` if you use OpenAI's Codex CLI |
 | `socket` | `api.socket.dev`, `socket.dev` | No |

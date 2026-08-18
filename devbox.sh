@@ -60,6 +60,41 @@ _devbox_firewall_custom_header() {
 EOF
 }
 
+# Seed a project's firewall.d/ with the default presets if it has none.
+#
+# Deliberately not part of bootstrapping. init-firewall.sh builds the whole
+# allowlist from firewall.d/, so a project bootstrapped before that
+# directory existed has nothing to build from -- and since bootstrapping
+# only runs when .devcontainer/ is absent, it would never get one. That is
+# how an upgraded project ends up sandboxed to GitHub and DNS alone, with
+# every other request hanging on a dropped packet.
+#
+# An existing firewall.d/ is left completely alone: the README encourages
+# trimming it down to what a project actually needs, and re-adding presets
+# underneath someone who deliberately removed them would be worse than the
+# bug this fixes. Only its total absence is repaired.
+_devbox_firewall_ensure() {
+  local proj="$1" dir preset src
+  dir="$proj/.devcontainer/firewall.d"
+  [[ -d "$proj/.devcontainer" ]] || return 0
+  [[ -d "$dir" ]] && return 0
+  mkdir -p "$dir" || return 1
+  for preset in base claude-code; do
+    # A project bootstrapped before 0.2.0 has no vendored presets/ of its
+    # own, so fall back to the template's copy -- that is exactly the
+    # case being repaired here.
+    for src in "$proj/.devcontainer/features/firewall/presets/$preset.txt" \
+               "$HOME/.devbox-template/features/firewall/presets/$preset.txt"; do
+      [[ -f "$src" ]] || continue
+      cp "$src" "$dir/$preset.txt"
+      break
+    done
+  done
+  _devbox_firewall_custom_header > "$dir/99-custom.txt"
+  echo "devbox: seeded default firewall presets (base, claude-code) into $dir"
+  return 0
+}
+
 _devbox_firewall_container_id() {
   docker ps -q --filter "label=devcontainer.local_folder=$1"
 }
@@ -209,7 +244,13 @@ devbox() {
   # folder names can contain spaces or other characters Docker rejects.
   # devcontainer.json can't sanitize ${localWorkspaceFolderBasename} itself,
   # so we do it here and pass it through as an env var it can reference.
-  export DEVBOX_PROJECT_NAME="$(basename "$dir" | tr -c 'A-Za-z0-9_.-' '-')"
+  # Feed `tr` via printf rather than piping basename straight in: `tr -c`
+  # counts the trailing newline as an out-of-set character too and rewrites
+  # it to '-', so every project name picked up a phantom trailing dash --
+  # renaming its ~/.claude volume and silently orphaning the stored login.
+  local project_basename
+  project_basename="$(basename "$dir")"
+  export DEVBOX_PROJECT_NAME="$(printf '%s' "$project_basename" | tr -c 'A-Za-z0-9_.-' '-')"
   builtin cd "$dir" || return 1
   local template_dir="$HOME/.devbox-template"
   if [[ ! -f .devcontainer/devcontainer.json && ! -f .devcontainer.json ]]; then
@@ -225,28 +266,25 @@ devbox() {
     # git command run from there would target the template's remote
     # instead of the project's.
     rm -rf .devcontainer/.git
-    # Seed the firewall allowlist with a default preset set (base +
-    # claude-code, the primary supported tool today) and an empty,
-    # documented spot for the project's own additions. This is a copy,
-    # like the rest of bootstrapping: it doesn't track template changes,
-    # so `devbox firewall enable <preset>` re-copies from the template
-    # when a project wants a preset it didn't start with.
-    mkdir -p .devcontainer/firewall.d
-    local preset
-    for preset in base claude-code; do
-      if [[ -f ".devcontainer/features/firewall/presets/$preset.txt" ]]; then
-        cp ".devcontainer/features/firewall/presets/$preset.txt" ".devcontainer/firewall.d/$preset.txt"
-      fi
-    done
-    _devbox_firewall_custom_header > .devcontainer/firewall.d/99-custom.txt
+    # Nor the template's own bootstrapped .devcontainer/: the template is
+    # itself a devbox project, so a plain copy nests a second, older config
+    # one level down where it does nothing but confuse.
+    rm -rf .devcontainer/.devcontainer
   fi
+  # Seed the firewall allowlist with a default preset set (base +
+  # claude-code, the primary supported tool today) and an empty, documented
+  # spot for the project's own additions. Outside the bootstrap branch on
+  # purpose -- see _devbox_firewall_ensure.
+  _devbox_firewall_ensure "$dir" || return 1
   if [[ -f .devcontainer/VERSION && -f "$template_dir/VERSION" ]]; then
     local project_version template_version
     project_version="$(cat .devcontainer/VERSION)"
     template_version="$(cat "$template_dir/VERSION")"
     if [[ "$project_version" != "$template_version" ]]; then
       echo "devbox: this project's .devcontainer is v$project_version, template is now v$template_version"
-      echo "        see $template_dir/CHANGELOG.md for what changed; re-run bootstrap to update"
+      echo "        see $template_dir/CHANGELOG.md for what changed; to update, re-bootstrap:"
+      echo "          rm -rf '$dir/.devcontainer' && devbox '$dir'"
+      echo "        that also discards .devcontainer/firewall.d/ -- copy it aside first if you've customised the allowlist"
     fi
   fi
   devcontainer up --workspace-folder . || return 1

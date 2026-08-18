@@ -79,7 +79,7 @@ _devbox_firewall_ensure() {
   [[ -d "$proj/.devcontainer" ]] || return 0
   [[ -d "$dir" ]] && return 0
   mkdir -p "$dir" || return 1
-  for preset in base claude-code; do
+  for preset in base claude-code codex; do
     # A project bootstrapped before 0.2.0 has no vendored presets/ of its
     # own, so fall back to the template's copy -- that is exactly the
     # case being repaired here.

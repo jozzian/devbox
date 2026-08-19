@@ -3,9 +3,14 @@ set -euo pipefail
 
 echo "Installing firewall dependencies..."
 
-# Install iptables, ipset, DNS tools, jq, and sudo (for locked-down root execution)
+# Install iptables, ipset, jq, and sudo (for locked-down root execution).
+#
+# No dnsutils: init-firewall.sh resolves names with getent (glibc/nsswitch)
+# rather than dig. Pulling in dig meant the whole bind9 suite -- bind9-libs,
+# libxml2 and libicu72, 43 MB of which 35 MB is Unicode collation tables --
+# to run two lookups per container start.
 apt-get update && apt-get install -y --no-install-recommends \
-    iptables ipset curl dnsutils iproute2 jq sudo \
+    iptables ipset curl iproute2 jq sudo \
     && apt-get clean && rm -rf /var/lib/apt/lists/* 2>/dev/null || true
 
 # Copy the firewall init script and network policy to stable locations (root-owned, not writable by dev)

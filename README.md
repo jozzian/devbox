@@ -19,10 +19,11 @@ access.
 ## What's in the image
 
 `debian:bookworm-slim` plus a deliberately small, fixed toolset:
-`ca-certificates curl git jq less locales sudo vim python3-pip
-python3-venv sqlite3 libsqlite3-dev unzip`, and the agent CLIs the
-features install (Claude Code, Codex). Nothing language-specific beyond
-that, by design: a sandbox shouldn't presuppose the project's stack.
+`ca-certificates curl git jq less sudo vim python3-pip python3-venv
+sqlite3 unzip`, and the agent CLIs the features install (Claude Code,
+Codex). Nothing language-specific beyond that, by design: a sandbox
+shouldn't presuppose the project's stack. There's no compiler, and so
+no library `-dev` headers either: nothing could consume them.
 
 Python is the one partial exception. `python3` is in the image anyway
 as a dependency of the credential proxy, so `python3-pip` and

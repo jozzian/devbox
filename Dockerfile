@@ -7,19 +7,27 @@ FROM debian:bookworm-slim
 # build its own venv; no project libraries are baked in. Same split as the
 # firewall's package-registry allowlist: make the tool reachable, let each
 # project declare what it actually needs.
+#
+# sqlite3 is the CLI only, deliberately without libsqlite3-dev. There is no
+# compiler in this image, so the headers had nothing that could consume them,
+# and Python's own sqlite3 module is already built into the interpreter. A
+# project that genuinely needs to compile a native extension has to add both
+# build-essential and the relevant -dev package to its own Dockerfile.
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
-    ca-certificates curl git jq less locales sudo vim \
+    ca-certificates curl git jq less sudo vim \
     python3-pip python3-venv \
-    sqlite3 libsqlite3-dev \
+    sqlite3 \
     unzip \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen \
- && locale-gen en_US.UTF-8 \
- && update-locale LANG=en_US.UTF-8
-ENV LANG=en_US.UTF-8
-ENV LC_ALL=en_US.UTF-8
+# C.UTF-8 is compiled into glibc and needs neither the `locales` package nor
+# a locale-gen step, which is 20 MB and two build stages saved over generating
+# en_US.UTF-8. The only behavioural difference that matters here is collation:
+# C.UTF-8 sorts by code point rather than by en_US rules, so `sort` output is
+# byte-deterministic. For a build sandbox that is the better default anyway.
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
 
 # debian:bookworm-slim has no unprivileged user by default (unlike
 # language-runtime base images). updateRemoteUserUID in devcontainer.json

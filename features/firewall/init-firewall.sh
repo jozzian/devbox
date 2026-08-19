@@ -74,6 +74,30 @@ fi
 
 # ── 2. Resolve everything while egress still works ──────────────────
 
+# Resolve a hostname to its IPv4 addresses, one per line, empty on failure.
+#
+# Uses getent rather than dig so the image doesn't need dnsutils and the
+# bind9 suite behind it just for two lookups. getent also resolves through
+# nsswitch, which is how the sandboxed applications themselves resolve, so
+# the allowlist now matches what they will actually connect to.
+#
+# The filter is not cosmetic. Unlike dig, getent reads /etc/hosts, where
+# devcontainer.json pins the cloud metadata hostnames to 0.0.0.0 -- so a
+# metadata host named in an allowlist file would resolve here, where dig
+# returned nothing. ipset parses a prefixless address as a /32, making that
+# harmless in practice, but "harmless" would then rest on that parser detail:
+# read as 0.0.0.0/0 the same entry allowlists the entire internet. Drop it
+# at the source instead. Loopback goes too, being already accepted below.
+#
+# getent exits nonzero on NXDOMAIN, hence the `|| true`: under `set -o
+# pipefail` an unresolvable domain would otherwise abort the whole script
+# and trip the fail-closed trap.
+resolve_ipv4() {
+    { getent ahostsv4 "$1" 2>/dev/null || true; } \
+        | awk '$1 ~ /^[0-9]+\./ && $1 !~ /^(0\.0\.0\.0|127\.)/ {print $1}' \
+        | sort -u
+}
+
 # DNS resolvers from resolv.conf. Loopback resolvers (Docker's 127.0.0.11)
 # are covered by the loopback rule.
 DNS_SERVERS=()
@@ -114,7 +138,7 @@ while IFS= read -r domain; do
     domain="$(echo "$domain" | xargs || true)" # trim whitespace
     [ -n "$domain" ] || continue
     domain_count=$((domain_count + 1))
-    ips=$(dig +short A "$domain" 2>/dev/null | grep -E '^[0-9]+\.' || true)
+    ips=$(resolve_ipv4 "$domain")
     for ip in $ips; do
         ipset add allowed-domains-staging "$ip" -exist 2>/dev/null || true
     done
@@ -151,7 +175,7 @@ while IFS= read -r entry; do
         *[a-zA-Z]*)
             while IFS= read -r ip; do
                 [ -n "$ip" ] && DENY_TARGETS+=("$ip")
-            done < <(dig +short A "$entry" 2>/dev/null | grep -E '^[0-9]+\.' || true)
+            done < <(resolve_ipv4 "$entry")
             ;;
         *)
             DENY_TARGETS+=("$entry")

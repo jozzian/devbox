@@ -320,7 +320,11 @@ devbox() {
       echo "        that also discards .devcontainer/firewall.d/ -- copy it aside first if you've customised the allowlist"
     fi
   fi
-  devcontainer up --workspace-folder . || return 1
+  # The devcontainer CLI shells out to `docker build`, which defaults to the
+  # legacy builder and warns that it's deprecated. BuildKit builds the feature
+  # stages in parallel and caches them better, so a cold build is appreciably
+  # faster and the deprecation notices go away.
+  DOCKER_BUILDKIT=1 devcontainer up --workspace-folder . || return 1
   local sessions_dir="$dir/.devbox-sessions"
   mkdir -p "$sessions_dir"
   local logfile="$sessions_dir/$(date +%Y-%m-%dT%H-%M-%S).log"

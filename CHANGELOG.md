@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-19
+
+Slims the image by about 85 MB and speeds up cold builds. No change to
+what the sandbox permits or blocks.
+
+As with any template change, existing projects do not pick this up on
+their own:
+
+    rm -rf <project>/.devcontainer && devbox <project>
+
+Copy aside anything you've customised in that directory first, in
+particular `firewall.d/` if you've edited the allowlist.
+
+### Changed
+
+- The firewall resolves allowlist and deny-list hostnames with `getent`
+  instead of `dig`, which lets the image drop `dnsutils`. Getting `dig`
+  meant installing the whole bind9 suite -- `bind9-libs`, `libxml2` and
+  `libicu72` -- for 43 MB, 35 MB of it Unicode collation tables, to run
+  a couple of lookups per container start. `getent` also resolves via
+  nsswitch, the same path the sandboxed applications use, so the
+  allowlist now reflects what they will actually connect to.
+
+  One deliberate difference: `getent` consults `/etc/hosts`, which
+  `dig` ignores, and `devcontainer.json` pins the cloud metadata
+  hostnames there to `0.0.0.0`. Resolved addresses of `0.0.0.0` and
+  `127.0.0.0/8` are therefore filtered out before reaching ipset rather
+  than relying on ipset parsing a prefixless `0.0.0.0` as a `/32`; read
+  as `0.0.0.0/0` that one entry would have allowlisted everything.
+- `LANG`/`LC_ALL` are now `C.UTF-8`, which is compiled into glibc, in
+  place of generating `en_US.UTF-8`. Drops the 20 MB `locales` package
+  and two build steps. Collation becomes code-point rather than en_US
+  ordering, so `sort` is byte-deterministic.
+- `devbox` sets `DOCKER_BUILDKIT=1` around `devcontainer up`. The
+  devcontainer CLI otherwise gets Docker's legacy builder, which builds
+  serially and prints a deprecation warning on every run.
+
+### Removed
+
+- `libsqlite3-dev` from the base image. There is no compiler in the
+  image, so nothing could ever compile against those headers, and
+  Python's `sqlite3` module is built into the interpreter and
+  unaffected. The `sqlite3` CLI stays. A project needing to build a
+  native extension has to add `build-essential` and the relevant `-dev`
+  package to its own Dockerfile, which was already true.
+
 ## [0.3.0] - 2026-08-19
 
 Existing projects do not pick this up on their own. `devbox` only

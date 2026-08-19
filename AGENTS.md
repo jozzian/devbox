@@ -40,8 +40,8 @@ Docker daemon or CLI inside it. If a task calls for `docker build`,
 ## Language toolchains are minimal, and you can't apt-get more
 
 The image is `debian:bookworm-slim` plus a small fixed toolset:
-`ca-certificates curl git jq less locales sudo vim python3-pip
-python3-venv sqlite3 libsqlite3-dev unzip`. In practice:
+`ca-certificates curl git jq less sudo vim python3-pip python3-venv
+sqlite3 unzip`. In practice:
 
 - **Python works, but install into a venv.** `python3`, `pip` and
   `python3 -m venv` are all present. Debian marks the system
@@ -61,7 +61,10 @@ python3-venv sqlite3 libsqlite3-dev unzip`. In practice:
   package to pull a runtime from.
 - **No compiler toolchain.** No `gcc`, `build-essential`, or
   `python3-dev`, so a package with no prebuilt wheel for this platform
-  will fail to build from source.
+  will fail to build from source. No library `-dev` headers either, for
+  the same reason -- there would be nothing able to compile against
+  them. `sqlite3` is the CLI only; Python's `sqlite3` module works
+  regardless, being built into the interpreter.
 
 You can't extend this from in here: `apt-get` needs root, and the only
 root access is the fixed no-argument scripts listed under Limited

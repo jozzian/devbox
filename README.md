@@ -349,7 +349,12 @@ newgrp docker          # or log out/in
 
 This repo follows [Semantic Versioning](https://semver.org/) and keeps
 a [CHANGELOG.md](CHANGELOG.md). The current version is also stamped
-in `VERSION` at the repo root.
+in `VERSION` at the repo root, and in the "Seeded by devbox vX.Y.Z"
+line near the top of [AGENTS.md](AGENTS.md). A release bumps both.
+The `AGENTS.md` stamp records which version seeded a given project's
+copy, which is deliberately not the same claim as which version it runs
+on now: that one is `.devcontainer/VERSION`, since `AGENTS.md` is seeded
+once and never overwritten.
 
 Because `devbox` bootstraps a project's `.devcontainer/` with a plain
 file copy rather than a git submodule, that copy carries its own

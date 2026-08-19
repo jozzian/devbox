@@ -45,6 +45,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   over apt because bookworm freezes runtime versions (its `nodejs` is
   Node 18, end-of-life). The seeded `AGENTS.md` now points an agent at
   that same route rather than at a Dockerfile edit and a re-bootstrap.
+- The seeded `AGENTS.md` carries those instructions in full, as a
+  three-step recipe an agent can hand the user verbatim (edit
+  `features`, rebuild with `--remove-existing-container`, verify), plus
+  the reasoning it needs to answer follow-ups: why a feature beats apt,
+  why installing one needs no allowlist change, and what to commit or
+  copy aside. An agent asked "how do I get Node in here?" can now answer
+  from the file instead of guessing, and knows not to report the missing
+  runtime as a dead end.
+- The seeded `AGENTS.md` also states which devbox version seeded it and
+  links to <https://github.com/jozzian/devbox>, so an agent can point at
+  the upstream docs and tell a stale copy from a current one.
+  `.devcontainer/VERSION` stays authoritative for the version a project
+  actually runs, because `AGENTS.md` is seeded once and never rewritten.
+  A release now bumps the stamp in `AGENTS.md` alongside `VERSION`, per
+  README's Versioning section.
 
 ## [0.2.2] - 2026-08-19
 

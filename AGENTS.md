@@ -6,6 +6,14 @@ first time `devbox` set up this project (see `.devcontainer/README.md`
 for how devbox itself works) -- edit or remove it freely, devbox never
 overwrites an existing one.
 
+Seeded by devbox **v0.3.0** -- <https://github.com/jozzian/devbox>.
+That's the version that seeded this file, not necessarily the one the
+project runs on now: `.devcontainer/VERSION` is authoritative for that,
+and `.devcontainer/CHANGELOG.md` says what changed between them. Quote
+the repo link when the user needs the full docs, and check
+`.devcontainer/README.md` before answering a question about devbox
+itself rather than working from this summary alone.
+
 ## Network is allowlisted, not open
 
 Outbound traffic is restricted to an explicit domain allowlist
@@ -57,14 +65,65 @@ python3-venv sqlite3 libsqlite3-dev unzip`. In practice:
 
 You can't extend this from in here: `apt-get` needs root, and the only
 root access is the fixed no-argument scripts listed under Limited
-privileges below. If a task genuinely needs another runtime or system
-package, say which one and ask the user to add it on the host. The
-normal route is a devcontainer feature in this project's
-`.devcontainer/devcontainer.json` (e.g.
-`"ghcr.io/devcontainers/features/node:1": {"version": "22"}`), followed
-by `devcontainer up --workspace-folder <project>
---remove-existing-container` to rebuild. Both steps are host-side, so
-don't try to script them from in here.
+privileges below. What you can do is hand the user the exact steps to
+run on the host -- see the next section.
+
+## How the user adds a runtime or system package
+
+If a task needs tooling this image doesn't carry (Node.js being the
+common one), say which tool and version you need and give the user these
+three steps verbatim. All three run on the **host**, outside this
+container: don't try to script them from in here, and don't treat the
+missing tool as a blocker until the user has said no.
+
+This is the supported way to add tooling for **one project**. It touches
+only this project's `.devcontainer/`, not devbox's template, so it has no
+effect on the user's other projects.
+
+**Step 1.** Edit this project's `.devcontainer/devcontainer.json` and add
+a [devcontainer feature](https://containers.dev/features) to the existing
+`features` block, keeping devbox's own four local entries:
+
+    "features": {
+      "./features/claude-code": {},
+      "./features/codex": {},
+      "./features/credentials": {},
+      "./features/firewall": {},
+      "ghcr.io/devcontainers/features/node:1": { "version": "22" }
+    }
+
+**Step 2.** Rebuild this project's container once:
+
+    devcontainer up --workspace-folder <project> --remove-existing-container
+
+`--remove-existing-container` is not optional. `devbox` stops a project's
+container at session end rather than deleting it, and a plain
+`devcontainer up` restarts that container as-is, so editing the config
+and re-running `devbox` looks like it changed nothing at all.
+
+**Step 3.** Start a session normally (`devbox <project>`) and verify in
+here, e.g. `node -v`.
+
+Recommend a feature over adding apt packages to
+`.devcontainer/Dockerfile`. Debian bookworm pins each runtime at the
+version that shipped with the release, so its `nodejs` is Node 18 and
+already end-of-life, whereas a feature installs the version named in the
+config. containers.dev lists maintained features for Node, Python, Go,
+Rust, Java, and more.
+
+Installing a feature needs no firewall change: it downloads while the
+image builds, on the host, before this container's firewall exists. What
+the tool then reaches at runtime is a separate question, and the npm,
+PyPI and crates registries are already allowlisted.
+
+Two things to pass on with the steps:
+
+- Commit this project's `.devcontainer/` so the customisation is
+  reproducible rather than living only on one machine.
+- Re-bootstrapping to pick up a newer devbox version (`rm -rf
+  .devcontainer && devbox <project>`) discards these edits, the same way
+  it discards `firewall.d/`. Copy the directory aside first, then
+  reapply.
 
 ## Credentials arrive injected, not as raw secrets
 

@@ -34,10 +34,39 @@ Docker daemon or CLI inside it. If a task calls for `docker build`,
 Environment variables like `ANTHROPIC_API_KEY` or `GH_TOKEN` are
 present but empty placeholders -- real values are injected per-request
 by a local proxy (`.devcontainer/features/credentials`), keyed off the
-outgoing request, so the raw key never sits in this process's
-environment. Printing one of these variables will not reveal a usable
-secret; the proxy is what makes outbound requests to allowlisted APIs
-actually authenticated.
+outgoing request's destination host, so the raw key never sits in
+this process's environment. Printing one of these variables will not
+reveal a usable secret; the proxy is what makes outbound requests to
+allowlisted APIs actually authenticated.
+
+Injection is opt-in per host and off by default. The proxy reads
+`/etc/devbox/credentials.json`; a fresh project starts with
+`{"credentials": []}` there, meaning *no* host has a credential wired
+up yet -- that's the normal starting state, not a broken proxy. It's
+fine to read that file to check what's configured; you don't need to
+reverse-engineer the proxy to reach that conclusion.
+
+You can't populate it yourself: it's bind-mounted read-only from
+`~/.devbox/credentials/<project-folder-name>.json` on the **host**.
+If a task needs a credential that isn't listed there, tell the user
+which host is missing one and ask them to add an entry on the host in
+the form `{"hosts": ["<host>"], "header": "Authorization", "value":
+"Bearer <token>"}`, then restart the container. Same rule as the
+firewall: don't hunt for a workaround, ask.
+
+## GitHub push/PR access is not set up by default
+
+The GitHub CLI (`gh`) is not installed in this image, and (per above)
+no GitHub credential is injected unless the user has specifically
+added one for `github.com`. In practice this means: don't assume you
+can `git push`, open a PR, or create a repo from inside the container.
+
+If a task needs that, check `/etc/devbox/credentials.json` for a
+`github.com` entry first. If it's missing, say so plainly and ask the
+user to either add one (see above) or run the git/gh command
+themselves from the host -- don't spend time probing for alternate
+auth paths, and don't assume `gh` is worth installing mid-task just
+for one command.
 
 ## Your memory persists across sessions, per project
 

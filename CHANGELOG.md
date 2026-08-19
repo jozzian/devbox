@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-19
+
+Existing projects do not pick this up on their own. `devbox` only
+bootstraps a `.devcontainer/` that isn't there yet, so to update one:
+
+    rm -rf <project>/.devcontainer && devbox <project>
+
+That rebuilds the image from the current template, which also refreshes
+the agent CLIs installed by the features. Re-bootstrapping discards
+everything else in that directory too, so copy aside anything you've
+customised first: `firewall.d/` if you've edited the allowlist, and the
+`Dockerfile` or `devcontainer.json` if you've added project-specific
+tooling to them.
+
 ### Added
 
 - `python3-pip` and `python3-venv` in the base image. `python3` was
@@ -310,7 +324,8 @@ discards it.
 - Platform notes rewritten: Linux (Docker Engine) confirmed supported
   end-to-end on Ubuntu 24.04; OrbStack mentions scoped to macOS only.
 
-[Unreleased]: https://github.com/jozzian/devbox/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/jozzian/devbox/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jozzian/devbox/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/jozzian/devbox/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/jozzian/devbox/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/jozzian/devbox/compare/v0.1.5...v0.2.0

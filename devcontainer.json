@@ -24,6 +24,7 @@
     "AWS_SECRET_ACCESS_KEY": "",
     "AWS_SESSION_TOKEN": "",
     "AZURE_CLIENT_SECRET": "",
+    "CLAUDE_CODE_NO_FLICKER": "0",
     "DATABASE_URL": "",
     "DOCKER_AUTH_CONFIG": "",
     "GH_TOKEN": "",

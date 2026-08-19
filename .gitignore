@@ -1,3 +1,6 @@
 .DS_Store
 .devbox-sessions/
-.devbox-sessions/
+
+# Per-devbox instance state, not part of the template
+.devcontainer/
+.claude/settings.local.json

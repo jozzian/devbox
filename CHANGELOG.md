@@ -28,6 +28,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   it. Removed the `.gitignore` entry and committed the feature
   (installs the Codex CLI, same shape as `features/claude-code`).
 
+- **Text could not be selected or copied out of Claude Code running in
+  a devbox**, on host terminals without OSC 52 support (notably Apple
+  Terminal). `devcontainer.json` now pins
+  `CLAUDE_CODE_NO_FLICKER=0` in `remoteEnv` so the renderer choice is
+  explicit rather than inherited.
+
+  Established by a pty probe of the `claude` binary in the container,
+  grepping the emitted byte stream for private-mode sequences:
+
+  | `tui` config | `CLAUDE_CODE_NO_FLICKER` | alt screen + mouse |
+  | --- | --- | --- |
+  | unset | unset | no |
+  | `fullscreen` | unset | no |
+  | `fullscreen` | `0` | no |
+  | `default` | unset | no |
+  | unset | `1` | **yes** |
+  | `fullscreen` | `1` | **yes** |
+
+  `CLAUDE_CODE_NO_FLICKER=1` is the only input that enters the
+  alternate screen (`?1049h`) and turns on mouse tracking
+  (`?1000h`/`?1002h`/`?1003h`/`?1006h`). With mouse tracking on, the
+  host terminal never sees a drag, so selection is impossible and a
+  right-click is swallowed by the application instead of opening the
+  context menu. The `tui` setting is inert for this purpose in both
+  `~/.claude.json` and `~/.claude/settings.json`; do not rely on it.
+
+  Claude Code's own select-to-copy does not rescue the fullscreen
+  case: it writes the clipboard via OSC 52 plus a best-effort native
+  `xclip`, and inside the container `DISPLAY` is empty so `xclip`
+  fails, while Apple Terminal has no OSC 52 support. Both paths
+  dead-end. Terminals that do support OSC 52 (Ghostty, iTerm2,
+  WezTerm, kitty) can set `CLAUDE_CODE_NO_FLICKER=1` and use
+  copy-on-select instead.
+
+  Note this does not propagate to existing devboxes. `devbox
+  <project-dir>` copies the template into the project's
+  `.devcontainer/` at creation time, and `~/.claude.json` and
+  `~/.claude` are bound per project directory
+  (`~/.devbox/claude-json/<dir>.json` and the
+  `devbox-claude-home-<dir>` volume). An already-created devbox keeps
+  its snapshot until it is recreated.
+
 ### Removed
 
 - `features/python/` — present since the initial commit but never

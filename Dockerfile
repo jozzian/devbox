@@ -1,8 +1,16 @@
 FROM debian:bookworm-slim
 
+# python3 is already in the image, but only as a transitive dependency of
+# the credential proxy (mitmproxy) -- so it arrives without pip and without
+# ensurepip, which makes both `pip install` and `python3 -m venv` fail out
+# of the box. python3-pip/python3-venv are the baseline that lets a project
+# build its own venv; no project libraries are baked in. Same split as the
+# firewall's package-registry allowlist: make the tool reachable, let each
+# project declare what it actually needs.
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
     ca-certificates curl git jq less locales sudo vim \
+    python3-pip python3-venv \
     sqlite3 libsqlite3-dev \
     unzip \
  && apt-get clean && rm -rf /var/lib/apt/lists/*

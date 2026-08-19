@@ -29,6 +29,38 @@ This container cannot build or run other containers -- there is no
 Docker daemon or CLI inside it. If a task calls for `docker build`,
 `docker run`, or similar, that has to happen on the host instead.
 
+## Language toolchains are minimal, and you can't apt-get more
+
+The image is `debian:bookworm-slim` plus a small fixed toolset:
+`ca-certificates curl git jq less locales sudo vim python3-pip
+python3-venv sqlite3 libsqlite3-dev unzip`. In practice:
+
+- **Python works, but install into a venv.** `python3`, `pip` and
+  `python3 -m venv` are all present. Debian marks the system
+  interpreter as externally managed (PEP 668), so a bare `pip install
+  <pkg>` fails with `error: externally-managed-environment` -- that's
+  expected, not a broken pip. Create a venv instead: `python3 -m venv
+  .venv && .venv/bin/pip install -r requirements.txt`.
+- **Don't reach for `--break-system-packages`.** The system
+  site-packages is where the credential-injection proxy's own
+  dependencies live (mitmproxy runs on `/usr/bin/python3`), so
+  overwriting them can take the proxy down, and with it every
+  authenticated outbound request. A venv costs nothing here.
+- **No Node.js and no other language runtime.** `node`, `npm`, and
+  anything else language-specific are absent. The firewall does
+  allowlist the npm, PyPI and crates registries, so a tool that
+  bootstraps itself into `$HOME` still works -- there's just no system
+  package to pull a runtime from.
+- **No compiler toolchain.** No `gcc`, `build-essential`, or
+  `python3-dev`, so a package with no prebuilt wheel for this platform
+  will fail to build from source.
+
+You can't extend this from in here: `apt-get` needs root, and the only
+root access is the fixed no-argument scripts listed under Limited
+privileges below. If a task genuinely needs another runtime or system
+package, say which one and ask the user to add it to the image
+(`.devcontainer/Dockerfile`) on the host and re-bootstrap.
+
 ## Credentials arrive injected, not as raw secrets
 
 Environment variables like `ANTHROPIC_API_KEY` or `GH_TOKEN` are

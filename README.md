@@ -16,6 +16,30 @@ access.
 - Isolates each tool's own config/session home in a per-project named
   Docker volume, not a bind mount.
 
+## What's in the image
+
+`debian:bookworm-slim` plus a deliberately small, fixed toolset:
+`ca-certificates curl git jq less locales sudo vim python3-pip
+python3-venv sqlite3 libsqlite3-dev unzip`, and the agent CLIs the
+features install (Claude Code, Codex). Nothing language-specific beyond
+that, by design: a sandbox shouldn't presuppose the project's stack.
+
+Python is the one partial exception. `python3` is in the image anyway
+as a dependency of the credential proxy, so `python3-pip` and
+`python3-venv` come along to make it actually usable. Debian marks the
+system interpreter externally managed (PEP 668), so install into a venv
+(`python3 -m venv .venv`) rather than system-wide; the system
+site-packages is shared with the credential proxy's own dependencies,
+and clobbering those breaks credential injection. Node.js is *not*
+installed.
+
+The firewall allowlists the npm, PyPI and crates registries by default
+(see Firewall below), so once a project has a runtime, package installs
+work without a firewall change. Adding a runtime or system package
+means editing the template `Dockerfile` and re-bootstrapping. It can't
+be done from inside a running container, which has no root beyond three
+fixed no-argument scripts.
+
 ## Security notes
 
 This sandbox reduces the agent's blast radius; it doesn't eliminate

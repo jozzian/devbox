@@ -40,7 +40,8 @@
     "NO_PROXY": "localhost,127.0.0.1",
     "NPM_TOKEN": "",
     "OPENAI_API_KEY": "",
-    "PYPI_TOKEN": ""
+    "PYPI_TOKEN": "",
+    "REQUESTS_CA_BUNDLE": "/etc/ssl/certs/ca-certificates.crt"
   },
   "remoteUser": "node",
   "runArgs": [

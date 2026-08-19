@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `python3-pip` and `python3-venv` in the base image. `python3` was
+  already there, but only as a transitive dependency of the credential
+  proxy (mitmproxy), so it arrived with no `pip` at all and with
+  `python3 -m venv` failing on a missing `ensurepip`. Nothing could fix
+  that from inside a running container (`apt-get` needs root, and the
+  only root access is three fixed no-argument scripts), which left any
+  Python project in devbox stuck. A project can now build its own venv
+  and install from PyPI, which the firewall has allowlisted all along.
+  No project libraries are baked in, and no other language runtime is
+  either: Node.js is still absent.
+- `REQUESTS_CA_BUNDLE` in `devcontainer.json`'s `remoteEnv`, pointing at
+  the system trust store. The credentials feature already exported it
+  from `/etc/profile.d`, but that only covers login shells, and pip or
+  `requests` talking through the credential proxy needs the proxy CA
+  trusted in non-interactive processes too. Mirrors `NODE_EXTRA_CA_CERTS`,
+  which is already set in both places.
+
+### Changed
+
+- Documented the image's actual toolset, in README (new "What's in the
+  image") and in the `AGENTS.md` seeded into projects. Both now spell
+  out that Debian marks the system interpreter externally managed
+  (PEP 668), so a bare `pip install` failing is expected rather than a
+  broken pip, and that `--break-system-packages` is the wrong way out:
+  system site-packages is where the credential proxy's own dependencies
+  live, and overwriting them can take credential injection down.
+
 ## [0.2.2] - 2026-08-19
 
 Existing projects do not pick any of this up on their own — `devbox`

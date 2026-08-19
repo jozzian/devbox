@@ -86,6 +86,24 @@ A couple of things to know:
   file edits or command execution, that's the known limitation to
   suspect first.
 
+## Agent instructions (AGENTS.md / CLAUDE.md)
+
+The sandbox has its own constraints that whatever agent you run
+inside it (Claude Code, Codex, ...) needs to know about to work
+effectively — the firewall allowlist, no Docker inside the container,
+credentials arriving via proxy injection rather than raw env vars, and
+per-project persistent memory. `devbox <project-dir>` seeds an
+`AGENTS.md` and a `CLAUDE.md` (a thin pointer to `AGENTS.md`, for
+Claude Code's own lookup convention) at the project root explaining
+these, the same way it seeds `firewall.d/` — only if the project
+doesn't already have its own, and independent of bootstrapping, so an
+already-bootstrapped project gets them too on its next `devbox` run.
+
+If a project already has its own `AGENTS.md`/`CLAUDE.md`, devbox never
+touches it — devbox's version is still copied into
+`.devcontainer/{AGENTS,CLAUDE}.md` as part of the template, so you can
+merge in whatever's useful by hand.
+
 ## Firewall
 
 The firewall allowlist is file-based, not hardcoded. On container

@@ -95,6 +95,38 @@ _devbox_firewall_ensure() {
   return 0
 }
 
+# Seed AGENTS.md/CLAUDE.md at a project's root so an agent working inside
+# the container knows the sandbox's own constraints (firewall allowlist, no
+# Docker-in-container, injected credentials, per-project persistent memory)
+# without the user having to explain them every time.
+#
+# Deliberately not part of bootstrapping, same reasoning as
+# _devbox_firewall_ensure: bootstrapping only runs when .devcontainer/ is
+# absent, so a project that already has one would never get these files
+# otherwise. And deliberately seeded at the project root, not inside
+# .devcontainer/ -- that's where Claude Code and other agents actually look
+# for them.
+#
+# Never overwrites an existing AGENTS.md/CLAUDE.md: those are a project's
+# own instructions to its agent, and devbox has no business rewriting them.
+# A project with its own already has devbox's copy under
+# .devcontainer/{AGENTS,CLAUDE}.md regardless (part of the template copy),
+# so nothing is lost -- just not auto-merged.
+_devbox_agent_docs_ensure() {
+  local proj="$1" name dest src
+  for name in AGENTS.md CLAUDE.md; do
+    dest="$proj/$name"
+    [[ -f "$dest" ]] && continue
+    for src in "$proj/.devcontainer/$name" "$HOME/.devbox-template/$name"; do
+      [[ -f "$src" ]] || continue
+      cp "$src" "$dest"
+      echo "devbox: seeded $dest -- sandbox notes for whatever agent works in this project"
+      break
+    done
+  done
+  return 0
+}
+
 _devbox_firewall_container_id() {
   docker ps -q --filter "label=devcontainer.local_folder=$1"
 }
@@ -276,6 +308,7 @@ devbox() {
   # spot for the project's own additions. Outside the bootstrap branch on
   # purpose -- see _devbox_firewall_ensure.
   _devbox_firewall_ensure "$dir" || return 1
+  _devbox_agent_docs_ensure "$dir"
   if [[ -f .devcontainer/VERSION && -f "$template_dir/VERSION" ]]; then
     local project_version template_version
     project_version="$(cat .devcontainer/VERSION)"

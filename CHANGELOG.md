@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `AGENTS.md` and `CLAUDE.md`, seeded at a project's root by
+  `devbox <project-dir>` (only if the project doesn't already have its
+  own, same as `firewall.d/`). Explains the sandbox's own constraints
+  — firewall allowlist, no Docker inside the container, credentials
+  injected via proxy rather than raw env vars, per-project persistent
+  memory — to whatever agent runs inside it. `CLAUDE.md` is a thin
+  pointer to `AGENTS.md` for Claude Code's lookup convention.
+
 ### Fixed
 
 - `devbox <project-dir>` failed immediately for everyone with

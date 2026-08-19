@@ -1,0 +1,9 @@
+{
+    "id": "codex",
+    "version": "0.1.0",
+    "name": "Codex CLI",
+    "description": "Installs OpenAI Codex CLI",
+    "documentationURL": "https://github.com/openai/codex",
+    "options": {},
+    "installsAfter": ["ghcr.io/devcontainers/features/common-utils"]
+}

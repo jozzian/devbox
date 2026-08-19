@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `devbox <project-dir>` failed immediately for everyone with
+  `ENOENT ... features/codex/devcontainer-feature.json`.
+  `devcontainer.json` has referenced `./features/codex` since the very
+  first commit, but `features/codex/` was listed in `.gitignore` from
+  that same commit, so the directory was never actually tracked — a
+  fresh clone had a dangling feature reference and nothing to satisfy
+  it. Removed the `.gitignore` entry and committed the feature
+  (installs the Codex CLI, same shape as `features/claude-code`).
+
+### Removed
+
+- `features/python/` — present since the initial commit but never
+  referenced by `devcontainer.json` and never documented. Dead code,
+  not a deliberate feature.
+
 ## [0.2.1] - 2026-08-18
 
 ### Fixed

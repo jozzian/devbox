@@ -1,9 +1,0 @@
-{
-    "id": "python",
-    "version": "0.1.0",
-    "name": "Python with uv",
-    "description": "Installs Python and the uv package manager",
-    "documentationURL": "https://docs.astral.sh/uv/",
-    "options": {},
-    "installsAfter": ["ghcr.io/devcontainers/features/common-utils"]
-}

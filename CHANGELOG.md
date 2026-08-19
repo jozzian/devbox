@@ -35,6 +35,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   broken pip, and that `--break-system-packages` is the wrong way out:
   system site-packages is where the credential proxy's own dependencies
   live, and overwriting them can take credential injection down.
+- README now documents how to add tooling to a single project (new
+  "Adding tooling for one project"). The mechanism already existed, in
+  that `devbox` only bootstraps a `.devcontainer/` that is missing and
+  leaves an existing one alone, but nothing said so: a devcontainer
+  feature in the project's own `.devcontainer/devcontainer.json`, then
+  `devcontainer up --remove-existing-container` to force the rebuild
+  that a config change alone doesn't trigger. Features are preferred
+  over apt because bookworm freezes runtime versions (its `nodejs` is
+  Node 18, end-of-life). The seeded `AGENTS.md` now points an agent at
+  that same route rather than at a Dockerfile edit and a re-bootstrap.
 
 ## [0.2.2] - 2026-08-19
 

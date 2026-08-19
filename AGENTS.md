@@ -58,8 +58,13 @@ python3-venv sqlite3 libsqlite3-dev unzip`. In practice:
 You can't extend this from in here: `apt-get` needs root, and the only
 root access is the fixed no-argument scripts listed under Limited
 privileges below. If a task genuinely needs another runtime or system
-package, say which one and ask the user to add it to the image
-(`.devcontainer/Dockerfile`) on the host and re-bootstrap.
+package, say which one and ask the user to add it on the host. The
+normal route is a devcontainer feature in this project's
+`.devcontainer/devcontainer.json` (e.g.
+`"ghcr.io/devcontainers/features/node:1": {"version": "22"}`), followed
+by `devcontainer up --workspace-folder <project>
+--remove-existing-container` to rebuild. Both steps are host-side, so
+don't try to script them from in here.
 
 ## Credentials arrive injected, not as raw secrets
 

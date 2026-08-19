@@ -40,6 +40,56 @@ means editing the template `Dockerfile` and re-bootstrapping. It can't
 be done from inside a running container, which has no root beyond three
 fixed no-argument scripts.
 
+## Adding tooling for one project
+
+Keep the template minimal and add what a single project needs to that
+project. A project's `.devcontainer/` is a plain copy of the template,
+and `devbox <dir>` only bootstraps it when it's missing, so anything you
+put there stays put across sessions. That directory, not this repo's
+`Dockerfile`, is where per-project tooling belongs.
+
+Prefer a [devcontainer feature](https://containers.dev/features) over
+apt. Debian bookworm's runtime packages are frozen at whatever version
+shipped with the release, and for language runtimes that ages badly
+(bookworm's `nodejs` is Node 18, already end-of-life), whereas a feature
+installs the version you name. Add it to the project's
+`.devcontainer/devcontainer.json`, alongside devbox's own local
+features:
+
+    "features": {
+      "./features/claude-code": {},
+      "./features/codex": {},
+      "./features/credentials": {},
+      "./features/firewall": {},
+      "ghcr.io/devcontainers/features/node:1": { "version": "22" }
+    }
+
+Then rebuild that project's container once, from the host:
+
+    devcontainer up --workspace-folder <project> --remove-existing-container
+
+`--remove-existing-container` is the part that matters. `devbox` stops a
+project's container when the session ends rather than deleting it, and a
+plain `devcontainer up` will restart that container as-is, so a config
+change alone doesn't get you a rebuild. After the one rebuild, go back
+to using `devbox <project>` normally.
+
+A feature installs while the image builds, which happens on the host
+before the container's firewall exists, so pulling one needs no
+allowlist change. Runtime traffic is separate: the npm, PyPI and crates
+registries are allowlisted by default, and anything else the tool talks
+to needs `devbox firewall add`.
+
+Two things to keep in mind:
+
+- Commit the project's `.devcontainer/` so the customisation is
+  reproducible. This repo gitignores its own only because here it's a
+  bootstrapped copy of the template rather than a project's config.
+- Re-bootstrapping to pick up a newer template version (`rm -rf
+  .devcontainer && devbox <project>`) discards these edits, the same way
+  it discards `firewall.d/`. Copy the directory aside first and reapply
+  your changes after.
+
 ## Security notes
 
 This sandbox reduces the agent's blast radius; it doesn't eliminate

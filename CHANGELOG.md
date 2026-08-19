@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-08-19
+
+Existing projects do not pick any of this up on their own — `devbox`
+only bootstraps a `.devcontainer/` that isn't there yet. To update one:
+
+    rm -rf <project>/.devcontainer && devbox <project>
+
+That rebuilds the image from the current template, which also refreshes
+the agent CLIs installed by the features. Copy `.devcontainer/firewall.d/`
+aside first if you've customised the allowlist — re-bootstrapping
+discards it.
+
 ### Added
 
 - `AGENTS.md` and `CLAUDE.md`, seeded at a project's root by
@@ -244,7 +256,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Platform notes rewritten: Linux (Docker Engine) confirmed supported
   end-to-end on Ubuntu 24.04; OrbStack mentions scoped to macOS only.
 
-[Unreleased]: https://github.com/jozzian/devbox/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/jozzian/devbox/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/jozzian/devbox/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/jozzian/devbox/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/jozzian/devbox/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/jozzian/devbox/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/jozzian/devbox/compare/v0.1.3...v0.1.4
